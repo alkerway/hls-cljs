@@ -82,7 +82,7 @@
 		(if fullParam (cljstr/join "=" (rest (cljstr/split fullParam #"="))) nil)))
 
 (def checkForWinSrc {:did-mount (fn [localState]
-	(let [checkSrc (getUrlParam (subs (.. js/window -location -search) 1) "src")]
+	(let [checkSrc (js/decodeURIComponent (getUrlParam (subs (.. js/window -location -search) 1) "src"))]
 		(log (str "loading " checkSrc))
 		(if (and checkSrc (re-find #"^http(s)?" checkSrc)) (onLoadSource checkSrc))
 		(assoc localState ::src checkSrc)))})
