@@ -36,10 +36,11 @@
                            :asset-path "js/compiled/out"
                            :output-to "resources/public/js/compiled/hls_cljs.js"
                            :output-dir "resources/public/js/compiled/out"
-                           :source-map-timestamp true
+                           }}
+                           ;:source-map-timestamp true
                            ;; To console.log CLJS data-structures make sure you enable devtools in Chrome
                            ;; https://github.com/binaryage/cljs-devtools
-                           :preloads [devtools.preload]}}
+                           ;:preloads []}}
                ;; This next build is a compressed minified build for
                ;; production. You can build this with:
                ;; lein cljsbuild once min

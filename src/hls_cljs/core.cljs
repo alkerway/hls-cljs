@@ -4,6 +4,7 @@
     	[goog.string :as gstring]
     	[goog.string.format]
     	[clojure.string :as cljstr]))
+(enable-console-print!)
 
 (def *vidInfo (atom {
 	:currentTime 0
@@ -11,7 +12,8 @@
 	:duration 0
 	:buffer 0
 	:src ""
-	:hlsData {
+        :hlsData {
+                :levels []
 		:bitrate 0
 		:maxBitrate 0
 		:error ""
@@ -34,36 +36,42 @@
 	(reset! (rum/cursor-in vidAtom [:playerState]) state))
 
 (defn getBufferFromEl [player]
-	(let [length (.. player -buffered -length)]
-		(or (loop [index 0] (when (< index length)
-			(let [end (.end (aget player "buffered") index)
-				start (.start (aget player "buffered") index)
-				current (aget player "currentTime")]
-					(if (and (< start current) (> end current)) (- end current) (recur (inc index)))))) 0)))
+  (let [length (.. player -buffered -length)]
+    (or (loop [index 0] (when (< index length)
+      (let [end (.end (aget player "buffered") index)
+            start (.start (aget player "buffered") index)
+            current (aget player "currentTime")]
+        (if (and (< start current) (> end current)) (- end current) (recur (inc index)))))) 0)))
 
 ;; HLS
 (defn onParsed [event data]
-	(play)
-	(reset! (rum/cursor-in *vidInfo [:hlsData :maxBitrate])
-		(:bitrate (last (:levels (js->clj data :keywordize-keys true))))))
+  (play)
+  (let [levels (:levels (js->clj data :keywordize-keys true))]
+    (reset! (rum/cursor-in *vidInfo [:hlsData :levels]) levels)
+    (reset! (rum/cursor-in *vidInfo [:hlsData :maxBitrate])
+          (:bitrate (last levels)))))
+
 (defn onLevelSwitch [event data]
-	(reset! (rum/cursor-in *vidInfo [:hlsData :bitrate])
-		(:bitrate (js->clj data :keywordize-keys true))))
+  (reset! (rum/cursor-in *vidInfo [:hlsData :bitrate])
+          (:bitrate (nth (:levels (:hlsData @*vidInfo))
+                         (:level (js->clj data :keywordize-keys true))))))
+
 (defn onError [event data]
-	(swap! (rum/cursor-in *vidInfo [:hlsData :errorCount]) inc)
-	(reset! (rum/cursor-in *vidInfo [:hlsData :error])
+  (println data)
+   (swap! (rum/cursor-in *vidInfo [:hlsData :errorCount]) inc)
+   (reset! (rum/cursor-in *vidInfo [:hlsData :error])
 		(:details (js->clj data :keywordize-keys true))))
 (defn addListeners [hls]
-	(let [evts (js->clj (.-Events js/Hls) :keywordize-keys true)]
-		(.on hls (:LEVEL_SWITCH evts) onLevelSwitch)
-		(.on hls (:ERROR evts) onError)
-		(.on hls (:MANIFEST_PARSED evts) onParsed)))
+  (let [evts (js->clj (.-Events js/Hls) :keywordize-keys true)]
+    (.on hls (:LEVEL_SWITCHED evts) onLevelSwitch)
+    (.on hls (:ERROR evts) onError)
+    (.on hls (:MANIFEST_PARSED evts) onParsed)))
 
 (defn loadSource [source player]
-	(let [hls (new js/Hls)]
-	    (.loadSource hls source)
-	    (.attachMedia hls player)
-	    (addListeners hls)))
+  (let [hls (new js/Hls)]
+    (.loadSource hls source)
+    (.attachMedia hls player)
+    (addListeners hls)))
 ;;
 ;; COMPONENTS
 (defn onLoadSource [url]
