@@ -1,39 +1,40 @@
 (ns hls-cljs.core
-    (:require
-    	[rum.core :as rum]
-    	[goog.string :as gstring]
-    	[goog.string.format]
-    	[clojure.string :as cljstr]))
+  (:require
+   [rum.core :as rum]
+   [goog.string :as gstring]
+   [goog.string.format]
+   [clojure.string :as cljstr]))
 (enable-console-print!)
 
-(def *vidInfo (atom {
-	:currentTime 0
-	:playerState ""
-	:duration 0
-	:buffer 0
-	:src ""
-        :hlsData {
-                :levels []
-		:bitrate 0
-		:maxBitrate 0
-		:error ""
-		:errorCount 0
-	}}))
+(def *vidInfo
+  (atom {
+         :currentTime 0
+         :playerState ""
+         :duration 0
+         :buffer 0
+         :src ""
+         :hlsData {
+                   :levels []
+                   :bitrate 0
+                   :maxBitrate 0
+                   :error ""
+                   :errorCount 0
+                   }}))
 (defn log [message] (.log js/console message))
 
 ;; VIDEO CONTROL
 (defn play []
-	(.play (.getElementById js/document "player")))
+  (.play (.getElementById js/document "player")))
 
 (defn pause []
-	(.pause (.getElementById js/document "player")))
+  (.pause (.getElementById js/document "player")))
 
 (defn playPause [playerState]
-	; todo: fix
-	(if (= @playerState "paused") play pause))
+                                        ; todo: fix
+  (if (= @playerState "paused") play pause))
 
 (defn setPlayerState [vidAtom state]
-	(reset! (rum/cursor-in vidAtom [:playerState]) state))
+  (reset! (rum/cursor-in vidAtom [:playerState]) state))
 
 (defn getBufferFromEl [player]
   (let [length (.. player -buffered -length)]
@@ -94,69 +95,70 @@
         (dissoc state ::bufferInterval)) })
 
 (rum/defcs vid <  checkForWinSrc (rum/local nil ::bufferInterval) clearBuffer
-		[componentState vidAtom]
-	(if (= nil @(::bufferInterval componentState)) (reset! (::bufferInterval componentState)
-		(js/setInterval #(reset! (rum/cursor-in vidAtom [:buffer])
-			(getBufferFromEl (js/ReactDOM.findDOMNode (:rum/react-component componentState)))) 200)))
-	[:video {
-		:id "player"
-		:style {
-			:width "100%"
-			:height "100%"
-			:position "absolute"
-		}
-		:controls "true"
-		:muted "true"
-		:on-click #(playPause (rum/cursor-in vidAtom [:playerState]))
-		:on-time-update #(reset! (rum/cursor-in vidAtom [:currentTime])
-			(.. % -currentTarget -currentTime))
-		:on-duration-change #(reset! (rum/cursor-in vidAtom [:duration])
-			(.. % -currentTarget -duration))
-		:on-playing #(setPlayerState vidAtom "playing")
-		:on-pause #(setPlayerState vidAtom "paused")
-		:on-seeking #(setPlayerState vidAtom "seeking")
-		:on-ended #(setPlayerState vidAtom "complete")
-		:on-waiting #(setPlayerState vidAtom "waiting")
-		}])
+  [componentState vidAtom]
+  (if (= nil @(::bufferInterval componentState))
+    (reset! (::bufferInterval componentState)
+            (js/setInterval #(reset! (rum/cursor-in vidAtom [:buffer])
+                                     (getBufferFromEl (js/ReactDOM.findDOMNode (:rum/react-component componentState)))) 200)))
+  [:video {
+           :id "player"
+           :style {
+                   :width "100%"
+                   :height "100%"
+                   :position "absolute"
+                   }
+           :controls "true"
+           :muted "true"
+           :on-click #(playPause (rum/cursor-in vidAtom [:playerState]))
+           :on-time-update #(reset! (rum/cursor-in vidAtom [:currentTime])
+                                    (.. % -currentTarget -currentTime))
+           :on-duration-change #(reset! (rum/cursor-in vidAtom [:duration])
+                                        (.. % -currentTarget -duration))
+           :on-playing #(setPlayerState vidAtom "playing")
+           :on-pause #(setPlayerState vidAtom "paused")
+           :on-seeking #(setPlayerState vidAtom "seeking")
+           :on-ended #(setPlayerState vidAtom "complete")
+           :on-waiting #(setPlayerState vidAtom "waiting")
+           }])
 
 (rum/defc infoPanel < rum/reactive [vidAtom]
-	[:div {
-		:id "infoPanel"
-		:style {
-			:position "absolute"
-			:color "white"
-			:opacity 0.7
-			:padding "10px"
-			:backgroundColor "black"
-		}}
-		[:div {} "buffer: " (gstring/format "%.2f" (rum/react (rum/cursor-in vidAtom [:buffer])))]
-		[:div {} "time: " (gstring/format "%.2f" (rum/react (rum/cursor-in vidAtom [:currentTime])))]
-		[:div {} "duration: " (rum/react (rum/cursor-in vidAtom [:duration]))]
-		[:div {} "state: " (rum/react (rum/cursor-in vidAtom [:playerState]))]
-		[:div {} "bitrate: " (rum/react (rum/cursor-in vidAtom [:hlsData :bitrate]))
-			"/" (rum/react (rum/cursor-in vidAtom [:hlsData :maxBitrate]))]
-		[:div {} "error(" (rum/react (rum/cursor-in vidAtom [:hlsData :errorCount])) "): "
-			(rum/react (rum/cursor-in vidAtom [:hlsData :error]))]])
+  [:div {
+         :id "infoPanel"
+         :style {
+                 :position "absolute"
+                 :color "white"
+                 :opacity 0.7
+                 :padding "10px"
+                 :backgroundColor "black"
+                 }}
+   [:div {} "buffer: " (gstring/format "%.2f" (rum/react (rum/cursor-in vidAtom [:buffer])))]
+   [:div {} "time: " (gstring/format "%.2f" (rum/react (rum/cursor-in vidAtom [:currentTime])))]
+   [:div {} "duration: " (rum/react (rum/cursor-in vidAtom [:duration]))]
+   [:div {} "state: " (rum/react (rum/cursor-in vidAtom [:playerState]))]
+   [:div {} "bitrate: " (rum/react (rum/cursor-in vidAtom [:hlsData :bitrate]))
+    "/" (rum/react (rum/cursor-in vidAtom [:hlsData :maxBitrate]))]
+   [:div {} "error(" (rum/react (rum/cursor-in vidAtom [:hlsData :errorCount])) "): "
+    (rum/react (rum/cursor-in vidAtom [:hlsData :error]))]])
 
 (rum/defc player [vidAtom]
-		[:div {
-			:id "playerContainer"
-			:style {
-				:width "100%"
-				:height "100%"
-				:backgroundColor "black"
-				:position "relative"
-			}
-		}
-		(vid vidAtom)
-		(if (getUrlParam (subs (.. js/window -location -search) 1) "panel") (infoPanel vidAtom))])
+  [:div {
+         :id "playerContainer"
+         :style {
+                 :width "100%"
+                 :height "100%"
+                 :backgroundColor "black"
+                 :position "relative"
+                 }
+         }
+   (vid vidAtom)
+   (if (getUrlParam (subs (.. js/window -location -search) 1) "panel") (infoPanel vidAtom))])
 
 (rum/defc wrapper []
-	[:div {
-		:style {:width "100%" :height "100%"}}
-		(player *vidInfo)])
+  [:div {
+         :style {:width "100%" :height "100%"}}
+   (player *vidInfo)])
 
 (defn init []
-	(rum/mount (wrapper)
-           (.getElementById js/document "container")))
+  (rum/mount (wrapper)
+             (.getElementById js/document "container")))
 (init)
